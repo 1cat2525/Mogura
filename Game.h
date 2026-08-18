@@ -10,7 +10,8 @@ class Game
 {
 private:
     Player player;
-    Mole mole;
+
+    std::vector<Mole> moles;
 
     std::vector<Hole> holes;
 
@@ -22,6 +23,8 @@ private:
     int startTime;
     int limitTime;
 
+    //出現のやつ、短くね
+    int spawnInterval;
 public:
     Game();
 

@@ -20,7 +20,9 @@ Game::Game()
         }
     }
 
-    nextSpawn = GetNowCount() + 1000;
+    //最初の出現
+    spawnInterval = 2000;
+    nextSpawn = GetNowCount() + spawnInterval;
 
     score = 0;
 
@@ -28,6 +30,12 @@ Game::Game()
 
     startTime = GetNowCount();
     limitTime = 60;
+
+    //モグラ複数関連
+    for (int i = 0; i < 5; i++)
+    {
+        moles.push_back(Mole());
+    }
 }
 
 void Game::Update()
@@ -36,19 +44,70 @@ void Game::Update()
 
     int now = GetNowCount();
 
-    //モグラ出現
-    if (now > nextSpawn && !mole.IsActive())
+
+    //モグラ出現処理
+    if (now > nextSpawn)
     {
-        int index = GetRand((int)holes.size() - 1);
+        int index;
 
-        mole.Spawn(
-            holes[index].GetPos()
-        );
+        //出現可能な穴が見つかるまで繰り返す
+        bool canSpawn = false;
 
-        nextSpawn = now + 2000;
+        while (!canSpawn)
+        {
+            //ランダムに穴を選ぶ
+            index = GetRand((int)holes.size() - 1);
+
+            canSpawn = true;
+
+            //既にその穴にモグラがいるか確認
+            for (auto& mole : moles)
+            {
+                //非表示のモグラは無視
+                if (!mole.IsActive())
+                {
+                    continue;
+                }
+
+                //同じ座標にモグラがいたら出現不可
+                if (
+                    mole.GetPos().x == holes[index].GetPos().x &&
+                    mole.GetPos().z == holes[index].GetPos().z
+                    )
+                {
+                    canSpawn = false;
+                    break;
+                }
+            }
+        }
+
+        //空いているモグラを出現させる
+        for (auto& mole : moles)
+        {
+            if (!mole.IsActive())
+            {
+                mole.Spawn(
+                    holes[index].GetPos()
+                );
+
+                break;
+            }
+        }
+
+        //次回の出現時間を設定
+        nextSpawn = now + spawnInterval;
+
+        //徐々に出現速度を上げる
+        if (spawnInterval > 500)
+        {
+            spawnInterval -= 50;
+        }
     }
 
-    mole.Update();
+    for (auto& mole : moles)
+    {
+        mole.Update();
+    }
 
     VECTOR attackPos =
         VAdd(
@@ -68,8 +127,13 @@ void Game::Update()
     {
         attackTimer = 15;
 
-        if (mole.IsActive())
+        for (auto& mole : moles)
         {
+            if (!mole.IsActive())
+            {
+                continue;
+            }
+
             VECTOR molePos =
                 mole.GetPos();
 
@@ -89,7 +153,7 @@ void Game::Update()
 
             if (dist < 3.0f)
             {
-                score = score + 100;
+                score += 100;
 
                 mole.Hide();
             }
@@ -145,21 +209,22 @@ void Game::Draw()
         )
     );
 
-    //地面
+    //地面横線
     for (int z = -20; z <= 20; z += 5)
     {
         DrawLine3D(
-            VGet(-20, 0, z),
-            VGet(20, 0, z),
+            VGet(-20.0f, 0.0f, (float)z),
+            VGet(20.0f, 0.0f, (float)z),
             GetColor(0, 255, 0)
         );
     }
 
+    //地面縦線
     for (int x = -20; x <= 20; x += 5)
     {
         DrawLine3D(
-            VGet(x, 0, -20),
-            VGet(x, 0, 20),
+            VGet((float)x, 0.0f, -20.0f),
+            VGet((float)x, 0.0f, 20.0f),
             GetColor(0, 255, 0)
         );
     }
@@ -172,7 +237,10 @@ void Game::Draw()
 
 
     //モグラ
-    mole.Draw();
+    for (auto& mole : moles)
+    {
+        mole.Draw();
+    }
 
     //プレイヤー
     player.Draw();
